@@ -20,15 +20,17 @@ describe('Auth Routes', () => {
   };
 
   describe('POST /api/v1/auth/register', () => {
-    it('should return error (DB unavailable or validation)', async () => {
+    it('should register a new user successfully', async () => {
       const res = await request(app)
         .post('/api/v1/auth/register')
         .send(testUser);
 
-      // Without DB, it returns 500 (connection refused) — structure should be valid
-      expect([400, 409, 500]).toContain(res.status);
-      expect(res.body).toHaveProperty('success');
-      expect(res.body).toHaveProperty('message');
+      // With MariaDB + Redis running, registration succeeds
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveProperty('accessToken');
+      expect(res.body.data).toHaveProperty('user');
+      expect(res.body.data.user.email).toBe(testUser.email);
     });
 
     it('should reject missing fields', async () => {
