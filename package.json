@@ -1,6 +1,6 @@
 {
   "name": "ai-nodejs-cicd",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Simple Node.js CI/CD application with Express, JWT, MariaDB & Redis",
   "main": "src/server.js",
   "scripts": {
