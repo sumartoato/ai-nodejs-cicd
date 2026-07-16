@@ -81,6 +81,17 @@ jobs:
           echo "REDIS_HOST=localhost" >> .env
           echo "JWT_SECRET=ci-test-secret" >> .env
 
+      - name: Setup database & seed
+        run: npm run seed
+        env:
+          DB_HOST: localhost
+          DB_USER: root
+          DB_PASSWORD: testpass
+          DB_NAME: nodejs_cicd_test
+          REDIS_HOST: localhost
+          JWT_SECRET: ci-test-secret
+          NODE_ENV: test
+
       - name: Run tests
         run: npm test
         env:
