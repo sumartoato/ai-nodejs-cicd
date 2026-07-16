@@ -3,7 +3,7 @@ const app = require('./app');
 const logger = require('./config/logger');
 const { testConnection, syncModels } = require('./config/database');
 
-const PORT = parseInt(process.env.PORT, 10) || 3000;
+const PORT = parseInt(process.env.PORT, 10) || 3001;
 
 async function start() {
   // Test DB connection

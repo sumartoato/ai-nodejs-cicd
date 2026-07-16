@@ -67,7 +67,7 @@ Aplikasi **Node.js** sederhana dengan **Express.js**, **JWT Authentication**, **
                                ▼
                     ┌──────────────────┐
                     │   Express App    │  (PM2 Cluster — multi-core)
-                    │   Port 3000      │
+                    │   Port 3001      │
                     └────┬──────┬──────┘
                          │      │
                     ┌────▼──┐ ┌─▼──────┐
@@ -202,7 +202,7 @@ Edit file `.env` sesuai environment Anda:
 
 ```env
 # ── Server ──
-PORT=3000
+PORT=3001
 NODE_ENV=development
 
 # ── Database (MariaDB) ──
@@ -354,7 +354,7 @@ docker compose up -d
 
 ```bash
 docker build -t ai-nodejs-cicd .
-docker run -p 3000:3000 --env-file .env ai-nodejs-cicd
+docker run -p 3001:3000 --env-file .env ai-nodejs-cicd
 ```
 
 ### PM2 Cluster Mode
@@ -448,7 +448,7 @@ Saat pipeline CI berjalan, GitHub Actions akan:
 **Register:**
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/auth/register \
+curl -X POST http://localhost:3001/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "John Doe",
@@ -481,7 +481,7 @@ curl -X POST http://localhost:3000/api/v1/auth/register \
 **Login:**
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/auth/login \
+curl -X POST http://localhost:3001/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "john@example.com",
@@ -492,7 +492,7 @@ curl -X POST http://localhost:3000/api/v1/auth/login \
 **Akses profile (with JWT):**
 
 ```bash
-curl http://localhost:3000/api/v1/users/me \
+curl http://localhost:3001/api/v1/users/me \
   -H "Authorization: Bearer <accessToken>"
 ```
 
@@ -512,7 +512,7 @@ curl http://localhost:3000/api/v1/users/me \
 
 ### Swagger UI
 
-Setelah aplikasi berjalan, buka: [http://localhost:3000/api-docs](http://localhost:3000/api-docs)
+Setelah aplikasi berjalan, buka: [http://localhost:3001/api-docs](http://localhost:3001/api-docs)
 
 ---
 
@@ -666,7 +666,7 @@ server {
     server_name api.domain.com;
 
     location / {
-        proxy_pass http://127.0.0.1:3000;
+        proxy_pass http://127.0.0.1:3001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -731,7 +731,7 @@ pm2 monit
 {
   "timestamp": "2026-07-16 08:00:00",
   "level": "info",
-  "message": "Server running on port 3000",
+  "message": "Server running on port 3001",
   "service": "ai-nodejs-cicd"
 }
 ```
@@ -879,13 +879,13 @@ docker inspect --format='{{json .State.Health}}' nodejs-cicd-app
 | SSH connection timeout | Firewall blokir port 22 | Buka port 22 di VPS |
 | Permission denied SSH | Public key tidak terdaftar | `cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys` |
 | Docker daemon error | Docker tidak running | `sudo systemctl start docker` |
-| Port 3000 already in use | Aplikasi lain | Ganti PORT di `.env` atau hentikan proses lain: `pm2 stop all` |
+| Port 3001 already in use | Aplikasi lain | Ganti PORT di `.env` atau hentikan proses lain: `pm2 stop all` |
 
 ### Health Check Logs
 
 ```bash
 # Cek status aplikasi
-curl http://localhost:3000/health | jq .
+curl http://localhost:3001/health | jq .
 
 # Cek log error
 tail -f logs/error.log
