@@ -1,7 +1,7 @@
 {
   "name": "ai-nodejs-cicd",
   "version": "1.0.0",
-  "description": "Simple Node.js CI/CD application with Express, JWT, MySQL & Redis",
+  "description": "Simple Node.js CI/CD application with Express, JWT, MariaDB & Redis",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
@@ -9,6 +9,8 @@
     "test": "jest --forceExit --detectOpenHandles",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "seed": "node src/seed.js",
+    "seed:drop": "node src/seed.js --drop",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix"
   },

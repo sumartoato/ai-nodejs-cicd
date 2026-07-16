@@ -1,7 +1,7 @@
 openapi: "3.0.3"
 info:
   title: "AI Node.js CI/CD API"
-  description: "Simple Node.js API for CI/CD demonstration with JWT auth, MySQL & Redis"
+  description: "Simple Node.js API for CI/CD demonstration with JWT auth, MariaDB & Redis"
   version: "1.0.0"
   contact:
     name: "Developer"
@@ -13,6 +13,14 @@ servers:
     description: Staging
   - url: https://api.example.com
     description: Production
+
+tags:
+  - name: Health
+    description: Health check endpoint
+  - name: Auth
+    description: Authentication endpoints (register, login)
+  - name: Users
+    description: User management endpoints
 
 components:
   securitySchemes:
@@ -28,34 +36,54 @@ components:
         id:
           type: string
           format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         name:
           type: string
+          example: "John Doe"
         email:
           type: string
           format: email
+          example: "john@test.com"
         role:
           type: string
           enum: [user, admin]
+          example: "user"
+        isActive:
+          type: boolean
+          example: true
         createdAt:
           type: string
           format: date-time
+          example: "2026-07-16T08:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-07-16T08:00:00.000Z"
 
     AuthResponse:
       type: object
       properties:
         success:
           type: boolean
+          example: true
         message:
           type: string
+          example: "Login successful"
         data:
           type: object
           properties:
             accessToken:
               type: string
+              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
             refreshToken:
               type: string
+              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
             user:
               $ref: "#/components/schemas/User"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-07-16T08:00:00.000Z"
 
     ErrorResponse:
       type: object
@@ -69,11 +97,15 @@ components:
           type: array
           items:
             type: string
+        timestamp:
+          type: string
+          format: date-time
 
 paths:
   /health:
     get:
-      summary: Health check
+      summary: Health check server
+      description: "Cek status server, uptime, memory usage, dan versi Node.js"
       tags: [Health]
       responses:
         "200":
@@ -85,14 +117,44 @@ paths:
                 properties:
                   success:
                     type: boolean
+                    example: true
                   message:
                     type: string
-                  timestamp:
-                    type: string
+                    example: "Server is healthy"
+                  data:
+                    type: object
+                    properties:
+                      uptime:
+                        type: number
+                        example: 12345.67
+                      memory:
+                        type: object
+                        example: { "rss": 45000000, "heapTotal": 30000000, "heapUsed": 25000000 }
+                      node:
+                        type: string
+                        example: "v20.18.0"
+                      env:
+                        type: string
+                        example: "development"
+              example:
+                success: true
+                message: "Server is healthy"
+                data:
+                  uptime: 12345.67
+                  memory:
+                    rss: 45000000
+                    heapTotal: 30000000
+                    heapUsed: 25000000
+                  node: "v20.18.0"
+                  env: "development"
+                timestamp: "2026-07-16T08:00:00.000Z"
 
   /api/v1/auth/register:
     post:
-      summary: Register a new user
+      summary: Register user baru
+      description: |
+        Mendaftarkan user baru ke dalam sistem.
+        Password harus mengandung huruf besar, huruf kecil, dan angka (min 8 karakter).
       tags: [Auth]
       requestBody:
         required: true
@@ -104,25 +166,51 @@ paths:
               properties:
                 name:
                   type: string
+                  example: "John Doe"
+                  description: Nama lengkap (2–100 karakter)
                 email:
                   type: string
                   format: email
+                  example: "john@test.com"
+                  description: Alamat email valid
                 password:
                   type: string
                   format: password
+                  example: "User1234"
+                  description: "Min 8 karakter, harus mengandung huruf besar, huruf kecil & angka"
+            example:
+              name: "John Doe"
+              email: "john@test.com"
+              password: "User1234"
       responses:
         "201":
-          description: User registered
+          description: Registrasi berhasil
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
         "400":
-          description: Validation error
+          description: Validasi gagal — field tidak lengkap / password lemah
+          content:
+            application/json:
+              example:
+                success: false
+                message: "Validation failed"
+                errors: ["\"name\" is required", "\"email\" is required"]
+                timestamp: "2026-07-16T08:00:00.000Z"
+        "409":
+          description: Email sudah terdaftar
+          content:
+            application/json:
+              example:
+                success: false
+                message: "Email already registered"
+                timestamp: "2026-07-16T08:00:00.000Z"
 
   /api/v1/auth/login:
     post:
       summary: Login user
+      description: "Login dengan email dan password untuk mendapatkan JWT token"
       tags: [Auth]
       requestBody:
         required: true
@@ -135,31 +223,142 @@ paths:
                 email:
                   type: string
                   format: email
+                  example: "admin@test.com"
+                  description: Email terdaftar
                 password:
                   type: string
                   format: password
+                  example: "Admin123"
+                  description: Password akun
+            example:
+              email: "admin@test.com"
+              password: "Admin123"
       responses:
         "200":
-          description: Login successful
+          description: Login berhasil — dapatkan accessToken & refreshToken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
         "401":
-          description: Invalid credentials
+          description: Email atau password salah
+          content:
+            application/json:
+              example:
+                success: false
+                message: "Invalid email or password"
+                timestamp: "2026-07-16T08:00:00.000Z"
+        "403":
+          description: Akun dinonaktifkan
+          content:
+            application/json:
+              example:
+                success: false
+                message: "Account is deactivated"
+                timestamp: "2026-07-16T08:00:00.000Z"
 
-  /api/v1/users:
+  /api/v1/users/me:
     get:
-      summary: Get all users (admin only)
+      summary: Profile user saat ini
+      description: "Mendapatkan data user yang sedang login (berdasarkan JWT token)"
       tags: [Users]
       security:
         - bearerAuth: []
       responses:
         "200":
-          description: List of users
+          description: Data profile user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    $ref: "#/components/schemas/User"
+              example:
+                success: true
+                message: "Success"
+                data:
+                  id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  name: "John Doe"
+                  email: "john@test.com"
+                  role: "user"
+                  isActive: true
+                  createdAt: "2026-07-16T08:00:00.000Z"
+                  updatedAt: "2026-07-16T08:00:00.000Z"
+                timestamp: "2026-07-16T08:00:00.000Z"
         "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden
+          description: Token tidak valid / tidak dikirim
+          content:
+            application/json:
+              example:
+                success: false
+                message: "Access denied. No token provided"
+                timestamp: "2026-07-16T08:00:00.000Z"
 
+  /api/v1/users:
     get:
-      summary: Get user by ID
+      summary: Daftar semua user (admin only)
+      description: "Mendapatkan daftar user — hanya untuk role admin"
+      tags: [Users]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Halaman
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Jumlah per halaman
+      responses:
+        "200":
+          description: Daftar user
+          content:
+            application/json:
+              example:
+                success: true
+                message: "Success"
+                data:
+                  - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    name: "Admin User"
+                    email: "admin@test.com"
+                    role: "admin"
+                    isActive: true
+                    createdAt: "2026-07-16T08:00:00.000Z"
+                    updatedAt: "2026-07-16T08:00:00.000Z"
+                  - id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                    name: "John Doe"
+                    email: "john@test.com"
+                    role: "user"
+                    isActive: true
+                    createdAt: "2026-07-16T08:00:00.000Z"
+                    updatedAt: "2026-07-16T08:00:00.000Z"
+                pagination:
+                  total: 4
+                  page: 1
+                  limit: 10
+                  totalPages: 1
+                timestamp: "2026-07-16T08:00:00.000Z"
+        "401":
+          description: Tidak terautentikasi
+        "403":
+          description: Bukan admin
+
+  /api/v1/users/{id}:
+    get:
+      summary: Detail user by ID (admin only)
+      description: "Mendapatkan data user spesifik berdasarkan UUID — hanya untuk role admin"
       tags: [Users]
       security:
         - bearerAuth: []
@@ -169,18 +368,29 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
+            example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+          description: UUID user
       responses:
         "200":
-          description: User found
+          description: User ditemukan
+          content:
+            application/json:
+              example:
+                success: true
+                message: "Success"
+                data:
+                  id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  name: "Admin User"
+                  email: "admin@test.com"
+                  role: "admin"
+                  isActive: true
+                  createdAt: "2026-07-16T08:00:00.000Z"
+                  updatedAt: "2026-07-16T08:00:00.000Z"
+                timestamp: "2026-07-16T08:00:00.000Z"
+        "401":
+          description: Tidak terautentikasi
+        "403":
+          description: Bukan admin
         "404":
-          description: User not found
-
-  /api/v1/users/me:
-    get:
-      summary: Get current user profile
-      tags: [Users]
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: Current user profile
+          description: User tidak ditemukan

@@ -4,7 +4,7 @@
 [![CD Staging](https://github.com/sumartoato/ai-nodejs-cicd/actions/workflows/cd-staging.yml/badge.svg)](https://github.com/sumartoato/ai-nodejs-cicd/actions/workflows/cd-staging.yml)
 [![CD Production](https://github.com/sumartoato/ai-nodejs-cicd/actions/workflows/cd-production.yml/badge.svg)](https://github.com/sumartoato/ai-nodejs-cicd/actions/workflows/cd-production.yml)
 
-Aplikasi **Node.js** sederhana dengan **Express.js**, **JWT Authentication**, **MySQL (Sequelize)**, **Redis**, dan pipeline **CI/CD lengkap** menggunakan GitHub Actions — dirancang sebagai proyek demonstrasi alur devops dari nol hingga production.
+Aplikasi **Node.js** sederhana dengan **Express.js**, **JWT Authentication**, **MariaDB (Sequelize)**, **Redis**, dan pipeline **CI/CD lengkap** menggunakan GitHub Actions — dirancang sebagai proyek demonstrasi alur devops dari nol hingga production.
 
 ---
 
@@ -19,6 +19,7 @@ Aplikasi **Node.js** sederhana dengan **Express.js**, **JWT Authentication**, **
   - [3. Install Dependencies](#3-install-dependencies)
   - [4. Setup Database](#4-setup-database)
   - [5. Setup Redis (Opsional)](#5-setup-redis-opsional)
+  - [6. Seed Database (Data Testing)](#6-seed-database-data-testing)
 - [Menjalankan Aplikasi](#menjalankan-aplikasi)
   - [Development Mode](#development-mode)
   - [Production Mode](#production-mode)
@@ -70,7 +71,7 @@ Aplikasi **Node.js** sederhana dengan **Express.js**, **JWT Authentication**, **
                     └────┬──────┬──────┘
                          │      │
                     ┌────▼──┐ ┌─▼──────┐
-                    │ MySQL │ │ Redis  │
+                    │ MariaDB │ │ Redis  │
                     │(Data) │ │(Cache) │
                     └───────┘ └────────┘
 ```
@@ -101,7 +102,7 @@ ai-nodejs-cicd/
 │
 ├── src/
 │   ├── config/                 # Konfigurasi aplikasi
-│   │   ├── database.js         #   Koneksi & sync MySQL via Sequelize
+│   │   ├── database.js         #   Koneksi & sync MariaDB via Sequelize
 │   │   ├── redis.js            #   Koneksi & helper Redis (ioredis)
 │   │   └── logger.js           #   Winston logger (file + console)
 │   │
@@ -145,7 +146,7 @@ ai-nodejs-cicd/
 │
 ├── .github/workflows/          # CI/CD pipeline files
 ├── Dockerfile                  # Multi-stage Docker build
-├── docker-compose.yml          # App + MySQL + Redis services
+├── docker-compose.yml          # App + MariaDB + Redis services
 ├── ecosystem.config.js         # PM2 cluster mode config
 ├── .env.example               # Template environment variables
 ├── .gitignore
@@ -174,7 +175,7 @@ Controller → Service → Repository → Model (Sequelize) → Database
 | Komponen | Minimal | Recommended |
 |----------|---------|-------------|
 | Node.js | 18.x | 20.x LTS |
-| MySQL | 5.7 | 8.0+ |
+| MariaDB | 10.6 | 11.4+ |
 | Redis | 5.x | 7.x |
 | NPM | 9.x | 10.x |
 | RAM | 512 MB | 1 GB+ |
@@ -204,7 +205,7 @@ Edit file `.env` sesuai environment Anda:
 PORT=3000
 NODE_ENV=development
 
-# ── Database (MySQL) ──
+# ── Database (MariaDB) ──
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=root
@@ -237,20 +238,20 @@ npm install
 
 ### 4. Setup Database
 
-Buat database MySQL:
+Buat database MariaDB:
 
 ```bash
-mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS nodejs_cicd CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mariadb -u root -p -e "CREATE DATABASE IF NOT EXISTS nodejs_cicd CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 
 Atau via Docker:
 
 ```bash
-docker run -d --name mysql-cicd \
-  -e MYSQL_ROOT_PASSWORD=rootpass \
-  -e MYSQL_DATABASE=nodejs_cicd \
+docker run -d --name mariadb-cicd \
+  -e MARIADB_ROOT_PASSWORD=rootpass \
+  -e MARIADB_DATABASE=nodejs_cicd \
   -p 3306:3306 \
-  mysql:8.0
+  mariadb:11.4
 ```
 
 Aplikasi akan **auto-sync** model saat pertama kali dijalankan (`alter: true` di mode development).
@@ -267,6 +268,53 @@ docker run -d --name redis-cicd -p 6379:6379 redis:7-alpine
 sudo apt install redis-server
 sudo systemctl start redis
 ```
+
+### 6. Seed Database (Data Testing)
+
+Setelah database siap, jalankan seeder untuk mengisi data user testing:
+
+```bash
+# Seed semua user test
+npm run seed
+```
+
+Output:
+```
+Database connection established successfully
+Database models synced
+Menambahkan 4 user test...
+  ✅ admin@test.com (admin)
+  ✅ john@test.com (user)
+  ✅ jane@test.com (user)
+  ✅ bob@test.com (user)
+
+✨ Seed selesai! 4 user baru ditambahkan
+
+📋 Test Credentials:
+   Admin : admin@test.com / Admin123
+   User  : john@test.com / User1234
+   User  : jane@test.com / User1234
+   User  : bob@test.com  / User1234
+```
+
+**Perintah seed lainnya:**
+
+| Perintah | Deskripsi |
+|----------|-----------|
+| `npm run seed` | Tambah user test (skip yang sudah ada) |
+| `npm run seed:drop` | Hapus semua user dulu, lalu seed ulang |
+| `node src/seed.js --help` | Lihat bantuan CLI |
+
+**Test Credentials yang tersedia:**
+
+| Nama | Email | Password | Role |
+|------|-------|----------|------|
+| Admin User | `admin@test.com` | `Admin123` | **admin** |
+| John Doe | `john@test.com` | `User1234` | user |
+| Jane Smith | `jane@test.com` | `User1234` | user |
+| Bob Johnson | `bob@test.com` | `User1234` | user |
+
+> **💡 Tip:** Login sebagai **admin** (`admin@test.com / Admin123`) untuk mengakses endpoint yang membutuhkan role admin seperti `GET /api/v1/users` dan `GET /api/v1/users/:id`.
 
 ---
 
@@ -296,7 +344,7 @@ npx pm2 monit
 
 ### Docker
 
-**Build & run semua service (app + MySQL + Redis):**
+**Build & run semua service (app + MariaDB + Redis):**
 
 ```bash
 docker compose up -d
@@ -375,7 +423,7 @@ Hasil coverage akan tersimpan di folder `coverage/`. Buka `coverage/lcov-report/
 ### Test Run di CI
 
 Saat pipeline CI berjalan, GitHub Actions akan:
-1. Menjalankan service **MySQL** dan **Redis** sebagai container terpisah
+1. Menjalankan service **MariaDB** dan **Redis** sebagai container terpisah
 2. Mengatur environment variable test
 3. Menjalankan `npm test` dengan koneksi database real
 
@@ -485,7 +533,7 @@ graph LR
 
 **Jobs:**
 1. **Lint** — memeriksa kode dengan ESLint
-2. **Test** — menjalankan Jest test dengan MySQL & Redis real (GitHub service containers)
+2. **Test** — menjalankan Jest test dengan MariaDB & Redis real (GitHub service containers)
 3. **Build** — build Docker image dan verifikasi
 
 ### CD Staging (`cd-staging.yml`)
@@ -564,8 +612,8 @@ sudo apt update && sudo apt upgrade -y
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
 sudo apt install -y nodejs
 
-# Install MySQL
-sudo apt install -y mysql-server
+# Install MariaDB
+sudo apt install -y mariadb-server
 sudo mysql_secure_installation
 
 # Install Redis
@@ -591,9 +639,9 @@ npm install --production
 **3. Setup database:**
 
 ```bash
-mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS nodejs_cicd CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql -u root -p -e "CREATE USER IF NOT EXISTS 'cicd_user'@'localhost' IDENTIFIED BY 'strong_password';"
-mysql -u root -p -e "GRANT ALL PRIVILEGES ON nodejs_cicd.* TO 'cicd_user'@'localhost'; FLUSH PRIVILEGES;"
+sudo mariadb -u root -p -e "CREATE DATABASE IF NOT EXISTS nodejs_cicd CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+sudo mariadb -u root -p -e "CREATE USER IF NOT EXISTS 'cicd_user'@'localhost' IDENTIFIED BY 'strong_password';"
+sudo mariadb -u root -p -e "GRANT ALL PRIVILEGES ON nodejs_cicd.* TO 'cicd_user'@'localhost'; FLUSH PRIVILEGES;"
 ```
 
 **4. Start dengan PM2:**
@@ -707,10 +755,10 @@ htop
 
 ```bash
 # Backup
-mysqldump -u root -p nodejs_cicd > backup_$(date +%Y%m%d_%H%M%S).sql
+mariadb-dump -u root -p nodejs_cicd > backup_$(date +%Y%m%d_%H%M%S).sql
 
 # Restore
-mysql -u root -p nodejs_cicd < backup_file.sql
+mariadb -u root -p nodejs_cicd < backup_file.sql
 ```
 
 **Cron job backup (harian):**
@@ -718,7 +766,7 @@ mysql -u root -p nodejs_cicd < backup_file.sql
 ```bash
 crontab -e
 # Tambahkan:
-0 3 * * * mysqldump -u root -p'password' nodejs_cicd > /opt/backups/db_$(date +\%Y\%m\%d).sql && gzip /opt/backups/db_$(date +\%Y\%m\%d).sql
+0 3 * * * mariadb-dump -u root -p'password' nodejs_cicd > /opt/backups/db_$(date +\%Y\%m\%d).sql && gzip /opt/backups/db_$(date +\%Y\%m\%d).sql
 ```
 
 ### Update Dependencies
@@ -805,8 +853,8 @@ docker inspect --format='{{json .State.Health}}' nodejs-cicd-app
 
 | Gejala | Penyebab | Solusi |
 |--------|----------|--------|
-| `SequelizeConnectionRefusedError` | MySQL tidak running | `sudo systemctl start mysql` |
-| `ER_NOT_SUPPORTED_AUTH_MODE` | MySQL 8 auth plugin | `ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'password';` |
+| Database tidak terkoneksi | MariaDB tidak running | `sudo systemctl start mariadb` |
+| `ER_NOT_SUPPORTED_AUTH_MODE` | MariaDB auth plugin | `ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'password';` |
 | `Unknown database` | Database belum dibuat | `CREATE DATABASE nodejs_cicd;` |
 
 ### Masalah Redis
